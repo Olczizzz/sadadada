@@ -1,4 +1,4 @@
--- AvalonHub & BRP Eggs: Secured with Work.ink Key System (Red & Black Theme)
+-- AvalonHub & BRP Eggs: Final Secured IP-Locked Key System (Red & Black Theme)
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -15,34 +15,30 @@ if game.PlaceId ~= 107778070777162 or game.GameId ~= 10563114921 then
 end
 
 --------------------------------------------------------------------------------
--- SYSTEM KLUCZY (WORK.INK INTEGRATION)
+-- SYSTEM KLUCZY ZŁĄCZONY Z TWOIM SERWEREM RAILWAY
 --------------------------------------------------------------------------------
-local WORK_INK_API_KEY = "cc455f30-15d9-4a50-9bb6-36089116c1cb"
+local SERVER_URL = "https://server-avalon-production.up.railway.app/verify"
 local WORK_INK_LINK = "https://work.ink/2YQZ/c4917cd4-6a61-4a54-b6d7-1819f485b538"
 local DISCORD_LINK = "discord.gg/avalonmarket"
 
-local function verifyKeyWithWorkInk(inputKey)
+local function verifyKeyWithBackend(inputKey)
     if not inputKey or inputKey == "" then return false, "Klucz jest pusty" end
     
-    local url = string.format("https://work.ink/api/v1/keys/verify?key=%s&apiKey=%s", HttpService:UrlEncode(inputKey), HttpService:UrlEncode(WORK_INK_API_KEY))
+    local data = HttpService:JSONEncode({ key = inputKey })
     local success, response = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet(url))
+        return HttpService:PostAsync(SERVER_URL, data, Enum.HttpContentType.ApplicationJson, false)
     end)
     
     if success and response then
-        -- Zakładamy standardową strukturę odpowiedzi API work.ink (valid oraz duration/expires_at)
-        if response.valid == true or response.success == true or response.status == "success" then
-            local duration = response.duration or response.time or 43200 -- domyślnie 12h (43200 sekund) jeśli brak pola
-            return true, duration
+        local decoded = HttpService:JSONDecode(response)
+        if decoded.success then
+            return true, decoded.message
+        else
+            return false, decoded.message or "Klucz odrzucony przez serwer."
         end
     end
     
-    -- Tryb zapasowy lokalny/symulacyjny na wypadek problemów z siecią API lub testu klucza
-    if inputKey == "AVALON-TEST-KEY-12H" or #inputKey > 10 then
-        return true, 43200 -- 12 godzin
-    end
-    
-    return false, "Nieprawidłowy lub wygasły klucz."
+    return false, "Błąd połączenia z serwerem autoryzacji na Railway."
 end
 
 -- Tworzenie okienka GUI do wpisania klucza (Czerwono-czarny design)
@@ -72,7 +68,7 @@ local KeyTitle = Instance.new("TextLabel")
 KeyTitle.Size = UDim2.new(1, 0, 0, 40)
 KeyTitle.Position = UDim2.new(0, 0, 0, 10)
 KeyTitle.BackgroundTransparency = 1
-KeyTitle.Text = "AvalonHub <font color=\"#C81428\">// Key System</font>"
+KeyTitle.Text = "AvalonHub <font color=\"#C81428\">// Secure Key System</font>"
 KeyTitle.RichText = true
 KeyTitle.TextColor3 = Color3.fromRGB(240, 240, 240)
 KeyTitle.TextSize = 16
@@ -84,7 +80,7 @@ KeyBox.Size = UDim2.new(1, -40, 0, 40)
 KeyBox.Position = UDim2.new(0, 20, 0, 65)
 KeyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyBox.PlaceholderText = "Wklej swój klucz tutaj..."
+KeyBox.PlaceholderText = "Wklej swój jednorazowy klucz..."
 KeyBox.Text = ""
 KeyBox.TextSize = 14
 KeyBox.Font = Enum.Font.Gotham
@@ -104,7 +100,7 @@ BtnSubmit.Size = UDim2.new(1, -40, 0, 36)
 BtnSubmit.Position = UDim2.new(0, 20, 0, 115)
 BtnSubmit.BackgroundColor3 = Color3.fromRGB(200, 20, 40)
 BtnSubmit.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnSubmit.Text = "Zatwierdź Klucz"
+BtnSubmit.Text = "Sprawdź Klucz (IP-Locked)"
 BtnSubmit.TextSize = 14
 BtnSubmit.Font = Enum.Font.GothamBold
 BtnSubmit.Parent = KeyMain
@@ -118,7 +114,7 @@ BtnGetKey.Size = UDim2.new(0, 180, 0, 30)
 BtnGetKey.Position = UDim2.new(0, 20, 0, 165)
 BtnGetKey.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 BtnGetKey.TextColor3 = Color3.fromRGB(200, 20, 40)
-BtnGetKey.Text = "Pobierz Klucz (12h)"
+BtnGetKey.Text = "Pobierz Klucz"
 BtnGetKey.TextSize = 12
 BtnGetKey.Font = Enum.Font.GothamMedium
 BtnGetKey.Parent = KeyMain
@@ -148,7 +144,7 @@ StatusMsg.BackgroundTransparency = 1
 StatusMsg.TextColor3 = Color3.fromRGB(150, 150, 150)
 StatusMsg.TextSize = 11
 StatusMsg.Font = Enum.Font.Gotham
-StatusMsg.Text = "Wygeneruj klucz na Work.ink (ważny 12h)"
+StatusMsg.Text = "Klucz przypisuje się do Twojego adresu IP."
 StatusMsg.Parent = KeyMain
 
 BtnGetKey.MouseButton1Click:Connect(function()
@@ -164,21 +160,20 @@ end)
 local verified = false
 BtnSubmit.MouseButton1Click:Connect(function()
     local key = KeyBox.Text
-    StatusMsg.Text = "Sprawdzanie klucza..."
-    local ok, durationOrError = verifyKeyWithWorkInk(key)
+    StatusMsg.Text = "Wysyłanie zapytania do serwera..."
+    local ok, message = verifyKeyWithBackend(key)
     if ok then
         verified = true
         StatusMsg.TextColor3 = Color3.fromRGB(50, 200, 50)
-        StatusMsg.Text = "Klucz poprawny! Uruchamianie..."
+        StatusMsg.Text = message
         task.wait(0.8)
         KeyGui:Destroy()
     else
         StatusMsg.TextColor3 = Color3.fromRGB(200, 50, 50)
-        StatusMsg.Text = tostring(durationOrError)
+        StatusMsg.Text = message
     end
 end)
 
--- Czekaj aż użytkownik pomyślnie wpisze klucz
 while not verified do
     task.wait(0.2)
     if not KeyGui.Parent then return end
@@ -187,8 +182,6 @@ end
 --------------------------------------------------------------------------------
 -- GŁÓWNY KOD SKRYPTU (BRP EGGS / AVALONHUB)
 --------------------------------------------------------------------------------
-local PlayerGui = Player:WaitForChild("PlayerGui", 10)
-assert(PlayerGui, "PlayerGui is unavailable")
 local MARKER = "BRP_StealEgg_10563114921"
 local env: any = getgenv()
 local previous = PlayerGui:FindFirstChild(MARKER)
@@ -875,7 +868,6 @@ local function buildUI()
     local WindUI: any = chunk()
     R.WindUI = WindUI
     
-    -- Nowoczesny motyw z czerwonym i czarnym
     WindUI:AddTheme({
         Name = "AvalonRed",
         Accent = Color3.fromRGB(200, 20, 40),
@@ -1102,5 +1094,5 @@ task.spawn(function()
     end
 end)
 
-log("WindUI loaded with Key System. RightShift: UI. End: stop.", true)
+log("WindUI loaded with IP-Locked Key System. RightShift: UI. End: stop.", true)
 return R
