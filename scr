@@ -15,7 +15,7 @@ if game.PlaceId ~= 107778070777162 or game.GameId ~= 10563114921 then
 end
 
 --------------------------------------------------------------------------------
--- SYSTEM KLUCZY ZŁĄCZONY Z TWOIM SERWEREM RAILWAY
+-- SYSTEM KLUCZY Z JEDNORAZOWĄ BLOKADĄ IP (METODA GET)
 --------------------------------------------------------------------------------
 local SERVER_URL = "https://server-avalon-production.up.railway.app/verify"
 local WORK_INK_LINK = "https://work.ink/2YQZ/c4917cd4-6a61-4a54-b6d7-1819f485b538"
@@ -24,9 +24,7 @@ local DISCORD_LINK = "discord.gg/avalonmarket"
 local function verifyKeyWithBackend(inputKey)
     if not inputKey or inputKey == "" then return false, "Klucz jest pusty" end
     
-    -- Wysyłamy klucz w adresie URL jako zapytanie GET
     local targetUrl = SERVER_URL .. "?key=" .. HttpService:UrlEncode(inputKey)
-    
     local success, response = pcall(function()
         return game:HttpGet(targetUrl)
     end)
@@ -40,12 +38,12 @@ local function verifyKeyWithBackend(inputKey)
             if decoded.success then
                 return true, decoded.message
             else
-                return false, decoded.message or "Klucz odrzucony."
+                return false, decoded.message or "Klucz odrzucony przez serwer."
             end
         end
     end
     
-    return false, "Błąd połączenia z serwerem autoryzacji."
+    return false, "Błąd połączenia z serwerem autoryzacji na Railway."
 end
 
 -- Tworzenie okienka GUI do wpisania klucza (Czerwono-czarny design)
@@ -187,8 +185,10 @@ while not verified do
 end
 
 --------------------------------------------------------------------------------
--- GŁÓWNY KOD SKRYPTU (BRP EGGS / AVALONHUB)
+-- GŁÓWNY KOD SKRYPTU (BRP EGGS / AVALONHUB) - ZABEZPIECZONY PRZED NIL
 --------------------------------------------------------------------------------
+local PlayerGui = Player:WaitForChild("PlayerGui", 10)
+assert(PlayerGui, "PlayerGui is unavailable")
 local MARKER = "BRP_StealEgg_10563114921"
 local env: any = getgenv()
 local previous = PlayerGui:FindFirstChild(MARKER)
@@ -221,10 +221,13 @@ local M: any = {
     HatchAnimation = module({"Play", "FadeSoundWhenGrantedToolUnequips"}),
 }
 local Net = RS.Packages.Networking
-local AreaObjects = W.__OBJECTS.Areas
-local GuardAreas = AreaObjects.GuardAreas
-local Separation = AreaObjects.SeparationLine
+
+-- Bezpieczne pobieranie obiektów ze świata, żeby uniknąć błędu nil
+local AreaObjects = W:WaitForChild("__OBJECTS", 10):WaitForChild("Areas", 10)
+local GuardAreas = AreaObjects:WaitForChild("GuardAreas", 10)
+local Separation = AreaObjects:WaitForChild("SeparationLine", 10)
 assert(Separation:IsA("BasePart"), "SeparationLine has an unexpected type")
+
 local S: any = {
     AutoFarm = false, AutoPlace = false, AutoHatch = false, AutoEquipBest = false,
     AutoIndex = false, AutoOffline = false, AutoSell = false,
@@ -1063,7 +1066,7 @@ connect(RunService.Heartbeat, function(dt)
         R.StatusLabel:SetDesc(string.format("%s | %s\nEggs: %d/115 | Pets: %d/250\nDelivered: %d | Placed: %d | Hatched: %d | Sold: %d",
             R.State, R.Reason, p and count(p.EggInventory) or 0, p and count(p.Inventory) or 0,
             R.Collected, R.Placed, R.Hatched, R.Sold))
-        R.BudgetLabel:SetDesc(tostring(R.Spent) .. " spent or reserved / " .. tostring(S.Budget) .. " authorized")
+        R.BudgetLabel:SetDesc(tostring(R.Spent) / 0 .. " spent or reserved / " .. tostring(S.Budget) .. " authorized")
         for key, view in R.ToggleViews do
             if view.Value ~= S[key] then view.Value = S[key]; view.Control:Set(S[key]) end
         end
@@ -1101,5 +1104,5 @@ task.spawn(function()
     end
 end)
 
-log("WindUI loaded with IP-Locked Key System. RightShift: UI. End: stop.", true)
+log("WindUI loaded with IP-Locked Key System & Safe Workspace. RightShift: UI. End: stop.", true)
 return R
