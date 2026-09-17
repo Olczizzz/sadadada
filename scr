@@ -889,15 +889,47 @@ local function buildUI()
         return game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
     end)
     
-    if not success or not source then
+    if not success or not source or source == "" then
         return warn("[AvalonHub] Nie udało się pobrać WindUI z sieci.")
     end
     
     local chunk, compileError = loadstring(source, "@BRP_Eggs_WindUI")
-    assert(chunk, compileError)
+    if not chunk then
+        return warn("[AvalonHub] Błąd kompilacji WindUI: " .. tostring(compileError))
+    end
+    
     local WindUI: any = chunk()
     R.WindUI = WindUI
-    -- Dalsza część konfiguracji okna...
+    
+    WindUI:AddTheme({
+        Name = "AvalonRed",
+        Accent = Color3.fromRGB(200, 20, 40),
+        Outline = Color3.fromRGB(60, 15, 20),
+        Text = Color3.fromRGB(240, 240, 240),
+        Placeholder = Color3.fromRGB(120, 120, 120),
+        Background = Color3.fromRGB(12, 12, 12),
+        WindowBackground = Color3.fromRGB(15, 15, 15),
+        ElementBackground = Color3.fromRGB(22, 22, 22),
+    })
+
+    local window = WindUI:CreateWindow({
+        Title = "AvalonHub | Steal an Egg", Author = "WindUI / Avalon",
+        Folder = "BRP_StealEgg", Size = UDim2.fromOffset(760, 540),
+        Theme = "AvalonRed", Resizable = true, SideBarWidth = 185,
+    })
+    R.Window = window
+    window:SetToggleKey(Enum.KeyCode.RightShift)
+    window:OnDestroy(function()
+        R.WindowDestroyed = true
+        R:Unload()
+    end)
+    
+    local tabs: any = {}
+    for _, name in {"Main", "Egg Farm", "Inventory", "Upgrades", "Visuals", "Safety", "Settings"} do
+        tabs[name] = window:Tab({Title = name})
+    end
+    -- (reszta funkcji zakładek pozostaje bez zmian)
+end
     
     WindUI:AddTheme({
         Name = "AvalonRed",
