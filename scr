@@ -24,27 +24,16 @@ local DISCORD_LINK = "discord.gg/avalonmarket"
 local function verifyKeyWithBackend(inputKey)
     if not inputKey or inputKey == "" then return false, "Klucz jest pusty" end
     
-    local data = HttpService:JSONEncode({ key = inputKey })
+    -- Wysyłamy klucz w adresie URL jako zapytanie GET
+    local targetUrl = SERVER_URL .. "?key=" .. HttpService:UrlEncode(inputKey)
     
     local success, response = pcall(function()
-        return HttpService:RequestAsync({
-            Url = SERVER_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = data
-        })
+        return game:HttpGet(targetUrl)
     end)
     
-    if not success then
-        warn("[AvalonHub Debug] Http error: " .. tostring(response))
-        return false, "Błąd HTTP (sprawdź konsolę F9)"
-    end
-    
-    if response and response.StatusCode == 200 then
+    if success and response then
         local decodeSuccess, decoded = pcall(function()
-            return HttpService:JSONDecode(response.Body)
+            return HttpService:JSONDecode(response)
         end)
         
         if decodeSuccess and decoded then
@@ -54,11 +43,9 @@ local function verifyKeyWithBackend(inputKey)
                 return false, decoded.message or "Klucz odrzucony."
             end
         end
-    else
-        return false, "Serwer zwrócił status: " .. tostring(response and response.StatusCode)
     end
     
-    return false, "Błąd przetwarzania odpowiedzi."
+    return false, "Błąd połączenia z serwerem autoryzacji."
 end
 
 -- Tworzenie okienka GUI do wpisania klucza (Czerwono-czarny design)
