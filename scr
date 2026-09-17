@@ -222,11 +222,13 @@ local M: any = {
 }
 local Net = RS.Packages.Networking
 
--- Bezpieczne pobieranie obiektów ze świata, żeby uniknąć błędu nil
-local AreaObjects = W:WaitForChild("__OBJECTS", 10):WaitForChild("Areas", 10)
-local GuardAreas = AreaObjects:WaitForChild("GuardAreas", 10)
-local Separation = AreaObjects:WaitForChild("SeparationLine", 10)
-assert(Separation:IsA("BasePart"), "SeparationLine has an unexpected type")
+-- Super bezpieczne pobieranie obiektów (jeśli brakuje __OBJECTS, skrypt nie padnie)
+local objectsFolder = W:FindFirstChild("__OBJECTS")
+local AreaObjects = objectsFolder and objectsFolder:FindFirstChild("Areas")
+local GuardAreas = AreaObjects and AreaObjects:FindFirstChild("GuardAreas")
+local Separation = AreaObjects and AreaObjects:FindFirstChild("SeparationLine")
+
+assert(Separation and Separation:IsA("BasePart"), "SeparationLine has an unexpected type or is missing")
 
 local S: any = {
     AutoFarm = false, AutoPlace = false, AutoHatch = false, AutoEquipBest = false,
@@ -241,12 +243,23 @@ local S: any = {
     MinimumReserve = 10000, MaxPurchase = 10000, ESPDistance = 500,
     Verbose = false, IgnoredUsers = {}, AvoidedOwners = {}, ProtectedUIDs = {},
 }
-local R: any = {
-    Alive = true, Settings = S, Epoch = 0, State = "IDLE", Reason = "Ready",
-    Connections = {}, Highlights = {}, Cooldowns = {}, Excluded = {}, OwnedThisRun = {},
-    InFlight = false, Uncertain = false, Moving = false, PauseUntil = 0, NextRemote = 0,
-    Spent = 0, Carry = nil, LastError = "", Collected = 0, Placed = 0, Hatched = 0, Sold = 0,
-    Window = nil, StatusLabel = nil, ToggleViews = {}, WorkerBusy = false,
+
+local rarityRanks: any = {}
+for _, cfg in M.Assets.Directory do
+    local rarity = cfg.Rarity
+    if rarity then rarityRanks[rarity._id] = rarity.RarityNumber end
+end
+local rarityNames = {"All"}
+for name in rarityRanks do table.insert(rarityNames, name) end
+table.sort(rarityNames, function(a, b) return (rarityRanks[a] or -1) < (rarityRanks[b] or -1) end)
+
+local areaNames = {"All"}
+if GuardAreas then
+    for _, area in GuardAreas:GetChildren() do 
+        if area:IsA("Model") then table.insert(areaNames, area.Name) end 
+    end
+end
+table.sort(areaNames)
 }
 local marker = Instance.new("Folder")
 marker.Name = MARKER
