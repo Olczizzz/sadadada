@@ -26,7 +26,6 @@ local function verifyKeyWithBackend(inputKey)
     
     local data = HttpService:JSONEncode({ key = inputKey })
     
-    -- Bezpieczniejsze żądanie z jawnie zdefiniowanymi nagłówkami dla executora
     local success, response = pcall(function()
         return HttpService:RequestAsync({
             Url = SERVER_URL,
@@ -38,7 +37,12 @@ local function verifyKeyWithBackend(inputKey)
         })
     end)
     
-    if success and response and response.StatusCode == 200 then
+    if not success then
+        warn("[AvalonHub Debug] Http error: " .. tostring(response))
+        return false, "Błąd HTTP (sprawdź konsolę F9)"
+    end
+    
+    if response and response.StatusCode == 200 then
         local decodeSuccess, decoded = pcall(function()
             return HttpService:JSONDecode(response.Body)
         end)
@@ -47,12 +51,14 @@ local function verifyKeyWithBackend(inputKey)
             if decoded.success then
                 return true, decoded.message
             else
-                return false, decoded.message or "Klucz odrzucony przez serwer."
+                return false, decoded.message or "Klucz odrzucony."
             end
         end
+    else
+        return false, "Serwer zwrócił status: " .. tostring(response and response.StatusCode)
     end
     
-    return false, "Błąd połączenia z serwerem autoryzacji na Railway."
+    return false, "Błąd przetwarzania odpowiedzi."
 end
 
 -- Tworzenie okienka GUI do wpisania klucza (Czerwono-czarny design)
