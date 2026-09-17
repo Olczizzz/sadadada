@@ -25,16 +25,30 @@ local function verifyKeyWithBackend(inputKey)
     if not inputKey or inputKey == "" then return false, "Klucz jest pusty" end
     
     local data = HttpService:JSONEncode({ key = inputKey })
+    
+    -- Bezpieczniejsze żądanie z jawnie zdefiniowanymi nagłówkami dla executora
     local success, response = pcall(function()
-        return HttpService:PostAsync(SERVER_URL, data, Enum.HttpContentType.ApplicationJson, false)
+        return HttpService:RequestAsync({
+            Url = SERVER_URL,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = data
+        })
     end)
     
-    if success and response then
-        local decoded = HttpService:JSONDecode(response)
-        if decoded.success then
-            return true, decoded.message
-        else
-            return false, decoded.message or "Klucz odrzucony przez serwer."
+    if success and response and response.StatusCode == 200 then
+        local decodeSuccess, decoded = pcall(function()
+            return HttpService:JSONDecode(response.Body)
+        end)
+        
+        if decodeSuccess and decoded then
+            if decoded.success then
+                return true, decoded.message
+            else
+                return false, decoded.message or "Klucz odrzucony przez serwer."
+            end
         end
     end
     
