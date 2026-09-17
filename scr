@@ -885,7 +885,7 @@ end
 command.Parent = marker
 
 local function buildUI()
-    local source = game:HttpGet("https://github.com/Footagesus/WindUI/releases/download/1.6.66/main.lua")
+    local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
     local chunk, compileError = loadstring(source, "@BRP_Eggs_WindUI_1.6.66")
     assert(chunk, compileError)
     local WindUI: any = chunk()
