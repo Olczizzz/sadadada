@@ -1,7 +1,10 @@
--- AvalonHub: Czysty skrypt bez żadnych zewnętrznych loadstringów
+-- AvalonHub: Ostateczny test GUI na PlayerGui
 
 local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
 local SERVER_URL = "https://server-avalon-production.up.railway.app/verify"
 
 -- Sprawdzanie klucza przez GET
@@ -19,10 +22,11 @@ local function verifyKey(inputKey)
     return false, "Błąd połączenia z serwerem."
 end
 
--- Interfejs
+-- Tworzenie GUI bezpośrednio w PlayerGui (zamiast CoreGui)
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AvalonCleanUI"
-ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
 
 local Frame = Instance.new("Frame")
 Frame.Size = UDim2.new(0, 400, 0, 200)
@@ -60,7 +64,7 @@ Status.Position = UDim2.new(0, 0, 1, -25)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(150, 150, 150)
 Status.TextSize = 12
-Status.Text = "Oczekiwanie na klucz..."
+Status.Text = "GUI załadowane pomyślnie!"
 Status.Parent = Frame
 
 Button.MouseButton1Click:Connect(function()
@@ -71,9 +75,11 @@ Button.MouseButton1Click:Connect(function()
         Status.Text = msg
         task.wait(1)
         ScreenGui:Destroy()
-        print("[AvalonHub] Klucz przyjęty! Tu uruchomimy resztę funkcji.")
+        print("[AvalonHub] Klucz przyjęty!")
     else
         Status.TextColor3 = Color3.fromRGB(255, 0, 0)
         Status.Text = msg
     end
 end)
+
+print("[AvalonHub] Skrypt GUI został wstrzyknięty do PlayerGui.")
