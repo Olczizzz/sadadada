@@ -885,11 +885,19 @@ end
 command.Parent = marker
 
 local function buildUI()
-    local source = game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
-    local chunk, compileError = loadstring(source, "@BRP_Eggs_WindUI_1.6.66")
+    local success, source = pcall(function()
+        return game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+    end)
+    
+    if not success or not source then
+        return warn("[AvalonHub] Nie udało się pobrać WindUI z sieci.")
+    end
+    
+    local chunk, compileError = loadstring(source, "@BRP_Eggs_WindUI")
     assert(chunk, compileError)
     local WindUI: any = chunk()
     R.WindUI = WindUI
+    -- Dalsza część konfiguracji okna...
     
     WindUI:AddTheme({
         Name = "AvalonRed",
