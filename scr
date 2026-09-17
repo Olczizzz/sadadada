@@ -1,176 +1,79 @@
--- AvalonHub & BRP Eggs: Wbudowane GUI (Bez WindUI, brak błędów pobierania)
+-- AvalonHub: Czysty skrypt bez żadnych zewnętrznych loadstringów
 
-local Players = game:GetService("Players")
-local RS = game:GetService("ReplicatedStorage")
-local W = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local Pathfinding = game:GetService("PathfindingService")
-local UIS = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
-local Player = Players.LocalPlayer
-
-if game.PlaceId ~= 107778070777162 or game.GameId ~= 10563114921 then
-    return warn("[BRP Eggs] Run this module inside Steal an Egg.")
-end
-
---------------------------------------------------------------------------------
--- SYSTEM KLUCZY (API RAILWAY / GET)
---------------------------------------------------------------------------------
 local SERVER_URL = "https://server-avalon-production.up.railway.app/verify"
-local WORK_INK_LINK = "https://work.ink/2YQZ/c4917cd4-6a61-4a54-b6d7-1819f485b538"
-local DISCORD_LINK = "discord.gg/avalonmarket"
 
-local function verifyKeyWithBackend(inputKey)
+-- Sprawdzanie klucza przez GET
+local function verifyKey(inputKey)
     if not inputKey or inputKey == "" then return false, "Klucz jest pusty" end
-    
-    local targetUrl = SERVER_URL .. "?key=" .. HttpService:UrlEncode(inputKey)
     local success, response = pcall(function()
-        return game:HttpGet(targetUrl)
+        return game:HttpGet(SERVER_URL .. "?key=" .. HttpService:UrlEncode(inputKey))
     end)
-    
     if success and response then
-        local decodeSuccess, decoded = pcall(function()
-            return HttpService:JSONDecode(response)
-        end)
-        
-        if decodeSuccess and decoded then
-            if decoded.success then
-                return true, decoded.message
-            else
-                return false, decoded.message or "Klucz odrzucony przez serwer."
-            end
+        local ok, decoded = pcall(function() return HttpService:JSONDecode(response) end)
+        if ok and decoded then
+            return decoded.success, decoded.message or "Błąd odpowiedzi"
         end
     end
-    
-    return false, "Błąd połączenia z serwerem autoryzacji."
+    return false, "Błąd połączenia z serwerem."
 end
 
--- Okno logowania klucza
-local KeyGui = Instance.new("ScreenGui")
-KeyGui.Name = "AvalonKeySystem"
-KeyGui.Parent = CoreGui
+-- Interfejs
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AvalonCleanUI"
+ScreenGui.Parent = CoreGui
 
-local KeyMain = Instance.new("Frame")
-KeyMain.Size = UDim2.new(0, 420, 0, 240)
-KeyMain.Position = UDim2.new(0.5, -210, 0.5, -120)
-KeyMain.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
-KeyMain.BorderSizePixel = 0
-KeyMain.Active = true
-KeyMain.Draggable = true
-KeyMain.Parent = KeyGui
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 400, 0, 200)
+Frame.Position = UDim2.new(0.5, -200, 0.5, -100)
+Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
 
-local KeyCorner = Instance.new("UICorner")
-KeyCorner.CornerRadius = UDim.new(0, 8)
-KeyCorner.Parent = KeyMain
+local UICorner = Instance.new("UICorner")
+UICorner.Parent = Frame
 
-local KeyStroke = Instance.new("UIStroke")
-KeyStroke.Color = Color3.fromRGB(200, 20, 40)
-KeyStroke.Thickness = 1.5
-KeyStroke.Parent = KeyMain
+local TextBox = Instance.new("TextBox")
+TextBox.Size = UDim2.new(1, -40, 0, 45)
+TextBox.Position = UDim2.new(0, 20, 0, 40)
+TextBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.PlaceholderText = "Wklej klucz..."
+TextBox.Text = ""
+TextBox.TextSize = 14
+TextBox.Parent = Frame
 
-local KeyTitle = Instance.new("TextLabel")
-KeyTitle.Size = UDim2.new(1, 0, 0, 40)
-KeyTitle.Position = UDim2.new(0, 0, 0, 10)
-KeyTitle.BackgroundTransparency = 1
-KeyTitle.Text = "AvalonHub // Secure Key System"
-KeyTitle.TextColor3 = Color3.fromRGB(240, 240, 240)
-KeyTitle.TextSize = 16
-KeyTitle.Font = Enum.Font.GothamBold
-KeyTitle.Parent = KeyMain
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(1, -40, 0, 40)
+Button.Position = UDim2.new(0, 20, 0, 100)
+Button.BackgroundColor3 = Color3.fromRGB(200, 20, 40)
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.Text = "Sprawdź Klucz"
+Button.TextSize = 14
+Button.Parent = Frame
 
-local KeyBox = Instance.new("TextBox")
-KeyBox.Size = UDim2.new(1, -40, 0, 40)
-KeyBox.Position = UDim2.new(0, 20, 0, 65)
-KeyBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyBox.PlaceholderText = "Wklej swój jednorazowy klucz..."
-KeyBox.Text = ""
-KeyBox.TextSize = 14
-KeyBox.Font = Enum.Font.Gotham
-KeyBox.Parent = KeyMain
+local Status = Instance.new("TextLabel")
+Status.Size = UDim2.new(1, 0, 0, 20)
+Status.Position = UDim2.new(0, 0, 1, -25)
+Status.BackgroundTransparency = 1
+Status.TextColor3 = Color3.fromRGB(150, 150, 150)
+Status.TextSize = 12
+Status.Text = "Oczekiwanie na klucz..."
+Status.Parent = Frame
 
-local BoxCorner = Instance.new("UICorner")
-BoxCorner.CornerRadius = UDim.new(0, 6)
-BoxCorner.Parent = KeyBox
-
-local BtnSubmit = Instance.new("TextButton")
-BtnSubmit.Size = UDim2.new(1, -40, 0, 36)
-BtnSubmit.Position = UDim2.new(0, 20, 0, 115)
-BtnSubmit.BackgroundColor3 = Color3.fromRGB(200, 20, 40)
-BtnSubmit.TextColor3 = Color3.fromRGB(255, 255, 255)
-BtnSubmit.Text = "Sprawdź Klucz"
-BtnSubmit.TextSize = 14
-BtnSubmit.Font = Enum.Font.GothamBold
-BtnSubmit.Parent = KeyMain
-
-local SubCorner = Instance.new("UICorner")
-SubCorner.CornerRadius = UDim.new(0, 6)
-SubCorner.Parent = BtnSubmit
-
-local StatusMsg = Instance.new("TextLabel")
-StatusMsg.Size = UDim2.new(1, 0, 0, 20)
-StatusMsg.Position = UDim2.new(0, 0, 1, -25)
-StatusMsg.BackgroundTransparency = 1
-StatusMsg.TextColor3 = Color3.fromRGB(150, 150, 150)
-StatusMsg.TextSize = 11
-StatusMsg.Font = Enum.Font.Gotham
-StatusMsg.Text = "Wprowadź klucz przypisany do IP."
-StatusMsg.Parent = KeyMain
-
-local verified = false
-BtnSubmit.MouseButton1Click:Connect(function()
-    local key = KeyBox.Text
-    StatusMsg.Text = "Weryfikacja..."
-    local ok, message = verifyKeyWithBackend(key)
+Button.MouseButton1Click:Connect(function()
+    Status.Text = "Sprawdzanie..."
+    local ok, msg = verifyKey(TextBox.Text)
     if ok then
-        verified = true
-        StatusMsg.TextColor3 = Color3.fromRGB(50, 200, 50)
-        StatusMsg.Text = message
-        task.wait(0.8)
-        KeyGui:Destroy()
+        Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+        Status.Text = msg
+        task.wait(1)
+        ScreenGui:Destroy()
+        print("[AvalonHub] Klucz przyjęty! Tu uruchomimy resztę funkcji.")
     else
-        StatusMsg.TextColor3 = Color3.fromRGB(200, 50, 50)
-        StatusMsg.Text = message
+        Status.TextColor3 = Color3.fromRGB(255, 0, 0)
+        Status.Text = msg
     end
 end)
-
-while not verified do
-    task.wait(0.2)
-    if not KeyGui.Parent then return end
-end
-
---------------------------------------------------------------------------------
--- GŁÓWNE MENU GŁÓWNE (WBUDOWANE GUI ZAMIAST WINDUI)
---------------------------------------------------------------------------------
-local MainGui = Instance.new("ScreenGui")
-MainGui.Name = "AvalonHubMain"
-MainGui.Parent = CoreGui
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -150)
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Parent = MainGui
-
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 8)
-MainCorner.Parent = MainFrame
-
-local MainStroke = Instance.new("UIStroke")
-MainStroke.Color = Color3.fromRGB(200, 20, 40)
-MainStroke.Thickness = 1.5
-MainStroke.Parent = MainFrame
-
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, 0, 0, 45)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "AvalonHub // Steal an Egg (Loaded)"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 16
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Parent = MainFrame
-
-print("[AvalonHub] Skrypt załadowany pomyślnie!")
